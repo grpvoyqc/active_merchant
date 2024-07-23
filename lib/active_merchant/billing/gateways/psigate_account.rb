@@ -34,7 +34,7 @@ module ActiveMerchant #:nodoc:
     #   },
     #   :email => 'jack@yahoo.com'
     # )
-    class PsigateGateway < Gateway
+    class PsigateAccountGateway < Gateway
       self.test_url  = 'https://realtimestaging.psigate.com/xml'
       self.live_url  = 'https://realtime.psigate.com/xml'
 
