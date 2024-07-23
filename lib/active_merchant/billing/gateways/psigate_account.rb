@@ -35,8 +35,8 @@ module ActiveMerchant #:nodoc:
     #   :email => 'jack@yahoo.com'
     # )
     class PsigateAccountGateway < Gateway
-      self.test_url  = 'https://realtimestaging.psigate.com/xml'
-      self.live_url  = 'https://realtime.psigate.com/xml'
+      self.test_url  = 'https://accountsstaging.psigate.com/xml'
+      self.live_url  = 'https://accounts.psigate.com/xml'
 
       self.supported_cardtypes = %i[visa master american_express]
       self.supported_countries = ['CA']
@@ -47,7 +47,7 @@ module ActiveMerchant #:nodoc:
       FAILURE_MESSAGE = 'The transaction was declined'
 
       def initialize(options = {})
-        requires!(options, :login, :password)
+        requires!(options, :CID, :login, :password)
         super
       end
 
