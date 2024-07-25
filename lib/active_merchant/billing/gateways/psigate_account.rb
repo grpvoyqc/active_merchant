@@ -51,6 +51,41 @@ module ActiveMerchant #:nodoc:
         super
       end
 
+      def save_card(creditcard)
+        exp_month = sprintf('%.2i', creditcard.month) unless creditcard.month.blank?
+        exp_year = creditcard.year.to_s[2, 2] unless creditcard.year.blank?
+        card_id_code = (creditcard.verification_value.blank? ? nil : '1')
+
+        data = {
+          CID: @options[:CID],
+          UserID: @options[:login],
+          Password: @options[:password],
+          Action: 'AMA01',
+          Account: {
+            Name: creditcard.name,
+            CardInfo: {
+              CardHolder: creditcard.name,
+              CardNumber: creditcard.number,
+              CardExpMonth: exp_month,
+              CardExpYear: exp_year,
+            },
+          },
+        }
+
+        request = data.to_xml(:root => 'Request')
+        response = Hash.from_xml(ssl_post(url, request))["Response"]
+
+        Response.new(
+          response["ReturnCode"] == 'RPA-0000',     # successful?(response),
+          response["ReturnMessage"],                # message_from(response),
+          response,
+          test: test?,
+          # authorization: build_authorization(response),
+          # avs_result: { code: response[:avsresult] },
+          # cvv_result: response[:cardidresult]
+        )
+      end
+
       # def authorize(money, creditcard, options = {})
       #   requires!(options, :order_id)
       #   options[:CardAction] = '1'
@@ -97,7 +132,7 @@ module ActiveMerchant #:nodoc:
       #     gsub(%r((<CardIDNumber>)[^<]*(</CardIDNumber>))i, '\1[FILTERED]\2')
       # end
 
-      # private
+      private
 
       # def commit(money, creditcard, options = {})
       #   response = parse(ssl_post(url, post_data(money, creditcard, options)))
@@ -113,9 +148,9 @@ module ActiveMerchant #:nodoc:
       #   )
       # end
 
-      # def url
-      #   (test? ? self.test_url : self.live_url)
-      # end
+      def url
+        (test? ? self.test_url : self.live_url)
+      end
 
       # def successful?(response)
       #   response[:approved] == 'APPROVED'
