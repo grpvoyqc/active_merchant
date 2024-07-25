@@ -80,6 +80,7 @@ module ActiveMerchant #:nodoc:
           response["ReturnMessage"],                # message_from(response),
           response,
           test: test?,
+          account_id: (response["ReturnCode"] == 'RPA-0000' ? response["Account"]["AccountID"] : nil),
           # authorization: build_authorization(response),
           # avs_result: { code: response[:avsresult] },
           # cvv_result: response[:cardidresult]
