@@ -47,7 +47,7 @@ module ActiveMerchant #:nodoc:
       FAILURE_MESSAGE = 'The transaction was declined'
 
       def initialize(options = {})
-        requires!(options, :CID, :login, :password)
+        requires!(options, :cid, :login, :password, :store_id)
         super
       end
 
@@ -81,6 +81,38 @@ module ActiveMerchant #:nodoc:
           response,
           test: test?,
           account_id: (response["ReturnCode"] == 'RPA-0000' ? response["Account"]["AccountID"] : nil),
+          # authorization: build_authorization(response),
+          # avs_result: { code: response[:avsresult] },
+          # cvv_result: response[:cardidresult]
+        )
+      end
+
+      def immediate_charge(customer, amount)
+        data = {
+          CID: @options[:cid],
+          UserID: @options[:login],
+          Password: @options[:password],
+          Action: 'RBC99',
+          Charge: {
+            StoreID: @options[:store_id],
+            AccountID: customer,
+            SerialNo: 1,
+            ItemInfo: {
+              ProductID: 'VOYAGE',
+              Quantity: 1,
+              Price: amount(amount),
+            },
+          },
+        }
+
+        request = data.to_xml(:root => 'Request')
+        response = Hash.from_xml(ssl_post(url, request))["Response"]
+
+        Response.new(
+          response["Result"]["Approved"] == 'APPROVED',     # successful?(response),
+          message_from(response["Result"]),                 # message_from(response),
+          response,
+          test: test?,
           # authorization: build_authorization(response),
           # avs_result: { code: response[:avsresult] },
           # cvv_result: response[:cardidresult]
@@ -244,15 +276,15 @@ module ActiveMerchant #:nodoc:
       #   params
       # end
 
-      # def message_from(response)
-      #   if response[:approved] == 'APPROVED'
-      #     return SUCCESS_MESSAGE
-      #   else
-      #     return FAILURE_MESSAGE if response[:errmsg].blank?
+      def message_from(response)
+        if response["Approved"] == 'APPROVED'
+          return SUCCESS_MESSAGE
+        else
+          return FAILURE_MESSAGE if response["ErrMsg"].blank?
 
-      #     return response[:errmsg].gsub(/[^\w]/, ' ').split.join(' ').capitalize
-      #   end
-      # end
+          return response["ErrMsg"].gsub(/[^\w]/, ' ').split.join(' ').capitalize
+        end
+      end
 
       # def split_authorization(authorization)
       #   order_id, trans_ref_number = authorization.split(';')
