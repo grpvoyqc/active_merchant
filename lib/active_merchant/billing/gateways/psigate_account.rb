@@ -109,8 +109,8 @@ module ActiveMerchant #:nodoc:
         response = Hash.from_xml(ssl_post(url, request))["Response"]
 
         Response.new(
-          response["Result"]["Approved"] == 'APPROVED',     # successful?(response),
-          message_from(response["Result"]),                 # message_from(response),
+          (response["Result"].present? && response["Result"]["Approved"] == 'APPROVED'),    # successful?(response),
+          message_from(response),                                                           # message_from(response),
           response,
           test: test?,
           # authorization: build_authorization(response),
@@ -277,12 +277,14 @@ module ActiveMerchant #:nodoc:
       # end
 
       def message_from(response)
-        if response["Approved"] == 'APPROVED'
+        if response["Result"].blank?
+          return FAILURE_MESSAGE
+        elsif response["Result"]["Approved"] == 'APPROVED'
           return SUCCESS_MESSAGE
         else
-          return FAILURE_MESSAGE if response["ErrMsg"].blank?
+          return FAILURE_MESSAGE if response["Result"]["ErrMsg"].blank?
 
-          return response["ErrMsg"].gsub(/[^\w]/, ' ').split.join(' ').capitalize
+          return response["Result"]["ErrMsg"].gsub(/[^\w]/, ' ').split.join(' ').capitalize
         end
       end
 
