@@ -100,17 +100,45 @@ module ActiveMerchant #:nodoc:
       private
 
       def commit(money, creditcard, options = {})
-        response = parse(ssl_post(url, post_data(money, creditcard, options)))
+        request_method = 'POST'
+        request_headers = {}
+        request_body = post_data(money, creditcard, options)
+        starting = (Time.now.to_f * 1000).floor
+        http_response = ssl_post(url, request_body, request_headers)
+        response_time_ms = (Time.now.to_f * 1000).floor - starting
+        response_headers = http_response.each_header.to_h
+        response_code = http_response.code.to_i
+        response_body = http_response.body
 
-        Response.new(
-          successful?(response),
-          message_from(response),
-          response,
-          test: test?,
-          authorization: build_authorization(response),
-          avs_result: { code: response[:avsresult] },
-          cvv_result: response[:cardidresult]
-        )
+        response = parse(response_body)
+
+        info = {
+          url: url,
+
+          request_method: request_method,
+          request_headers: request_headers,
+          request_body: scrub(request_body),
+
+          response_code: response_code,
+          response_headers: response_headers,
+          response_body: response_body,
+
+          error: !(successful?(response)),
+          response_time_ms: response_time_ms,
+        }
+
+        {
+          info: info,
+          response: Response.new(
+            successful?(response),
+            message_from(response),
+            response,
+            test: test?,
+            authorization: build_authorization(response),
+            avs_result: { code: response[:avsresult] },
+            cvv_result: response[:cardidresult]
+          )
+        }
       end
 
       def url
