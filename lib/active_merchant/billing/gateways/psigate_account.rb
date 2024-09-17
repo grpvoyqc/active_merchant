@@ -73,7 +73,7 @@ module ActiveMerchant #:nodoc:
         }
 
         request = data.to_xml(:root => 'Request')
-        response = Hash.from_xml(ssl_post(url, request))["Response"]
+        response = Hash.from_xml(ssl_post(url, request).body)["Response"]
 
         Response.new(
           response["ReturnCode"] == 'RPA-0000',     # successful?(response),
@@ -106,7 +106,7 @@ module ActiveMerchant #:nodoc:
         }
 
         request = data.to_xml(:root => 'Request')
-        response = Hash.from_xml(ssl_post(url, request))["Response"]
+        response = Hash.from_xml(ssl_post(url, request).body)["Response"]
 
         Response.new(
           (response["Result"].present? && response["Result"]["Approved"] == 'APPROVED'),    # successful?(response),
@@ -168,7 +168,7 @@ module ActiveMerchant #:nodoc:
       private
 
       # def commit(money, creditcard, options = {})
-      #   response = parse(ssl_post(url, post_data(money, creditcard, options)))
+      #   response = parse(ssl_post(url, post_data(money, creditcard, options)).body)
 
       #   Response.new(
       #     successful?(response),
