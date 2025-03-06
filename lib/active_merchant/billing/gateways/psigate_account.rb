@@ -54,7 +54,6 @@ module ActiveMerchant #:nodoc:
       def save_card(creditcard)
         exp_month = sprintf('%.2i', creditcard.month) unless creditcard.month.blank?
         exp_year = creditcard.year.to_s[2, 2] unless creditcard.year.blank?
-        card_id_code = (creditcard.verification_value.blank? ? nil : '1')
 
         data = {
           CID: @options[:cid],
@@ -72,19 +71,46 @@ module ActiveMerchant #:nodoc:
           },
         }
 
-        request = data.to_xml(:root => 'Request')
-        response = Hash.from_xml(ssl_post(url, request).body)["Response"]
+        request_method = 'POST'
+        request_headers = {}
+        request_body = data.to_xml(:root => 'Request')
+        starting = (Time.now.to_f * 1000).floor
+        http_response = ssl_post(url, request_body, request_headers)
+        response_time_ms = (Time.now.to_f * 1000).floor - starting
+        response_headers = http_response.each_header.to_h
+        response_code = http_response.code.to_i
+        response_body = http_response.body
 
-        Response.new(
-          response["ReturnCode"] == 'RPA-0000',     # successful?(response),
-          response["ReturnMessage"],                # message_from(response),
-          response,
-          test: test?,
-          customer: (response["ReturnCode"] == 'RPA-0000' ? response["Account"]["AccountID"] : nil),
-          # authorization: build_authorization(response),
-          # avs_result: { code: response[:avsresult] },
-          # cvv_result: response[:cardidresult]
-        )
+        response = Hash.from_xml(response_body)["Response"]
+
+        info = {
+          url: url,
+
+          request_method: request_method,
+          request_headers: request_headers,
+          request_body: scrub(request_body),
+
+          response_code: response_code,
+          response_headers: response_headers,
+          response_body: response_body,
+
+          error: !(response["ReturnCode"] == 'RPA-0000'),
+          response_time_ms: response_time_ms,
+        }
+
+        {
+          info: info,
+          response: Response.new(
+            response["ReturnCode"] == 'RPA-0000',     # successful?(response),
+            response["ReturnMessage"],                # message_from(response),
+            response,
+            test: test?,
+            customer: (response["ReturnCode"] == 'RPA-0000' ? response["Account"]["AccountID"] : nil),
+            # authorization: build_authorization(response),
+            # avs_result: { code: response[:avsresult] },
+            # cvv_result: response[:cardidresult]
+          )
+        }
       end
 
       def immediate_charge(customer, amount)
@@ -154,16 +180,15 @@ module ActiveMerchant #:nodoc:
       #   commit(nil, nil, options)
       # end
 
-      # def supports_scrubbing?
-      #   true
-      # end
+      def supports_scrubbing?
+        true
+      end
 
-      # def scrub(transcript)
-      #   transcript.
-      #     gsub(%r((<Passphrase>)[^<]*(</Passphrase>))i, '\1[FILTERED]\2').
-      #     gsub(%r((<CardNumber>)[^<]*(</CardNumber>))i, '\1[FILTERED]\2').
-      #     gsub(%r((<CardIDNumber>)[^<]*(</CardIDNumber>))i, '\1[FILTERED]\2')
-      # end
+      def scrub(transcript)
+        transcript.
+          gsub(%r((<Password>)[^<]*(</Password>))i, '\1[FILTERED]\2').
+          gsub(%r((<CardNumber>)[^<]*(</CardNumber>))i, '\1[FILTERED]\2')
+      end
 
       private
 
