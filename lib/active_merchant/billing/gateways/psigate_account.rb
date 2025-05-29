@@ -132,7 +132,7 @@ module ActiveMerchant #:nodoc:
         }
 
         request_method = 'POST'
-        request_headers = {}
+        request_headers = { 'Content-Type' => 'application/xml' }
         request_body = data.to_xml(:root => 'Request')
         starting = (Time.now.to_f * 1000).floor
         http_response = ssl_post(url, request_body, request_headers)
